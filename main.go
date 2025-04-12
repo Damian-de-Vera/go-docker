@@ -1,33 +1,16 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"go-docker-cli/commands"
 	"os"
-	"os/exec"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-type DockerImage struct {
-	Containers   string `json:"Containers"`
-	CreatedAt    string `json:"CreatedAt"`
-	CreatedSince string `json:"CreatedSince"`
-	Digest       string `json:"Digest"`
-	ID           string `json:"ID"`
-	Repository   string `json:"Repository"`
-	SharedSize   string `json:"SharedSize"`
-	Size         string `json:"Size"`
-	Tag          string `json:"Tag"`
-	UniqueSize   string `json:"UniqueSize"`
-	VirtualSize  string `json:"VirtualSize"`
-}
-
 var (
-	customTable        table.Model
 	leftContainerStyle = lipgloss.NewStyle().
 				Width(20).
 				Height(20).
@@ -41,9 +24,9 @@ var (
 				BorderForeground(lipgloss.Color("21"))
 
 	commandFuncs = map[int]func() (*string, error){
-		0: dockerPs,
-		1: dockerImages,
-		2: dockerPull,
+		0: commands.DockerPs,
+		1: commands.DockerImages,
+		2: commands.DockerPull,
 	}
 )
 
@@ -162,69 +145,4 @@ func executeCommand(m model) (*string, error) {
 	}
 
 	return result, nil
-}
-
-func dockerPs() (*string, error) {
-	out, err := exec.Command("docker", "ps", "--format", "{{json .}}").Output()
-	if err != nil {
-
-		return nil, err
-	}
-	result := string(out)
-
-	return &result, nil
-}
-
-func dockerImages() (*string, error) {
-	out, err := exec.Command("docker", "images", "--format", "{{json .}}").Output()
-	if err != nil {
-		os.Exit(1)
-		return nil, err
-	}
-
-	result := string(out)
-	linesArray := strings.Split(result, "\n")
-
-	// Creamos un slice de DockerImage
-	var images []DockerImage
-	for _, line := range linesArray {
-		if line == "" {
-			continue
-		}
-
-		var image DockerImage
-		err := json.Unmarshal([]byte(line), &image)
-		if err != nil {
-			fmt.Println("Error al parsear JSON:", err)
-			continue
-		}
-		images = append(images, image)
-	}
-	columns := []table.Column{
-		{Title: "ID", Width: 30},
-		{Title: "Repository", Width: 30},
-		{Title: "Tag", Width: 30},
-	}
-	var rows []table.Row
-
-	// Mostramos las imágenes
-	for _, image := range images {
-		row := table.Row{image.Repository, image.Tag, image.ID}
-
-		rows = append(rows, row)
-
-	}
-	customTable = table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithHeight(7),
-	)
-	tableString := customTable.View()
-	return &tableString, nil
-}
-
-func dockerPull() (*string, error) {
-
-	stringToResponse := "docker pull"
-	return &stringToResponse, nil
 }
